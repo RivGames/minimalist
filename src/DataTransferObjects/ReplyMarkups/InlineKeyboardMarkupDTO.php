@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\ReplyMarkups;
 
-use ReflectionException;
+use ReflectionClass;
 
 /**
  * @property InlineKeyboardButtonDTO[] $inline_keyboard
  */
 class InlineKeyboardMarkupDTO implements AbstractReplyMarkup
 {
-    public function __construct(public array $inline_keyboard = [])
+    public function __construct(public array $inlineKeyboard = [])
     {
     }
 
-    public static function make(array $inline_keyboard): InlineKeyboardMarkupDTO
+    public static function make(array $inlineKeyboard): InlineKeyboardMarkupDTO
     {
-        return new self($inline_keyboard);
+        return new self($inlineKeyboard);
     }
 
     /**
@@ -26,25 +26,28 @@ class InlineKeyboardMarkupDTO implements AbstractReplyMarkup
     public function toArray(): array
     {
         $data = [];
-        $temp = [];
-        foreach ($this->inline_keyboard as $item) {
+        $level1 = [];
+        foreach ($this->inlineKeyboard as $item) {
             if ($item instanceof InlineKeyboardButtonDTO) {
                 $keyboardButtonData = [];
                 $this->extractKeyboardButtonProperties($item, $keyboardButtonData);
-                $temp[] = $keyboardButtonData;
+                $level1[] = $keyboardButtonData;
             } else {
+                $levelN = [];
                 foreach ($item as $keyboardButton) {
                     $keyboardButtonData = [];
                     $this->extractKeyboardButtonProperties($keyboardButton, $keyboardButtonData);
-                    $data[][] = $keyboardButtonData;
+                    $levelN[] = $keyboardButtonData;
                 }
+                $data[] = $levelN;
             }
         }
-        if (!empty($temp)) {
-            $data[] = $temp;
+        if (!empty($level1)) {
+            $data[] = $level1;
         }
-        usort($data, function($a, $b){
-            return count($a) < count($b) ? 1 : 0;
+        $data = array_filter($data);
+        usort($data, function ($a, $b) {
+            return count($a) <= count($b) ? 1 : 0;
         });
 
         return ['inline_keyboard' => $data];
@@ -52,12 +55,12 @@ class InlineKeyboardMarkupDTO implements AbstractReplyMarkup
 
     /**
      * @param InlineKeyboardButtonDTO $keyboardButton
-     * @param $keyboardButtonData
+     * @param array $keyboardButtonData
      * @return void
      */
-    private function extractKeyboardButtonProperties(InlineKeyboardButtonDTO $keyboardButton, &$keyboardButtonData): void
+    private function extractKeyboardButtonProperties(InlineKeyboardButtonDTO $keyboardButton, array &$keyboardButtonData): void
     {
-        $reflection = new \ReflectionClass($keyboardButton);
+        $reflection = new ReflectionClass($keyboardButton);
         foreach ($reflection->getProperties() as $reflectionProperty) {
             if (!empty($value = $keyboardButton->{$reflectionProperty->name})) {
                 $keyboardButtonData[$reflectionProperty->name] = $value;

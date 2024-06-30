@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Casts\CustomDataCast;
-use App\CustomQueryBuilders\TemporaryActionBuilder;
+use App\CustomQueryBuilders\TemporaryLogBuilder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -14,9 +14,9 @@ use Illuminate\Database\Eloquent\Model;
  * @property array $data
  * @property string $created_at
  * @property string $updated_at
- * @method static TemporaryActionBuilder byChatId($value)
+ * @method static TemporaryLogBuilder|TemporaryLog byChatId($value)
  */
-class TemporaryAction extends Model
+class TemporaryLog extends Model
 {
     protected $fillable = [
         'chat_id',
@@ -29,10 +29,10 @@ class TemporaryAction extends Model
 
     /**
      * @param $query
-     * @return TemporaryActionBuilder
+     * @return TemporaryLogBuilder
      */
-    public function newEloquentBuilder($query): TemporaryActionBuilder
+    public function newEloquentBuilder($query): TemporaryLogBuilder
     {
-        return new TemporaryActionBuilder($query);
+        return new TemporaryLogBuilder($query);
     }
 }

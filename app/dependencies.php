@@ -34,12 +34,23 @@ return function (ContainerBuilder $containerBuilder) {
             return new TelegramService();
         },
         TranslatorInterface::class => function () {
-            $translator = new Translator($_ENV['APP_LOCALE']);
+            $translator = new Translator($_SESSION['locale']);
             $translator->addLoader('array', new PhpFileLoader());
             $translator->addResource('array', dirname(__DIR__) . '/resources/languages/en/telegram.php', 'en');
+            $translator->addResource('array', dirname(__DIR__) . '/resources/languages/en/questions.php', 'en');
+            $translator->addResource('array', dirname(__DIR__) . '/resources/languages/en/validation.php', 'en');
+
             $translator->addResource('array', dirname(__DIR__) . '/resources/languages/uk/telegram.php', 'uk');
+            $translator->addResource('array', dirname(__DIR__) . '/resources/languages/uk/questions.php', 'uk');
+            $translator->addResource('array', dirname(__DIR__) . '/resources/languages/uk/validation.php', 'uk');
+
             $translator->addResource('array', dirname(__DIR__) . '/resources/languages/ru/telegram.php', 'ru');
+            $translator->addResource('array', dirname(__DIR__) . '/resources/languages/ru/questions.php', 'ru');
+            $translator->addResource('array', dirname(__DIR__) . '/resources/languages/ru/validation.php', 'ru');
+
             $translator->addResource('array', dirname(__DIR__) . '/resources/languages/es/telegram.php', 'es');
+            $translator->addResource('array', dirname(__DIR__) . '/resources/languages/es/questions.php', 'es');
+            $translator->addResource('array', dirname(__DIR__) . '/resources/languages/es/validation.php', 'es');
 
             return $translator;
         }

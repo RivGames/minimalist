@@ -6,10 +6,12 @@ namespace App\Handlers;
 
 use App\Entities\Update;
 use App\Enums\AvailableCommand;
+use App\Enums\ActionStrategy;
 use App\Models\User;
-use App\Services\TelegramServices\AbstractService;
+use App\Services\ValidationMapper;
 use App\TelegramCommands\AbstractCommand;
 use App\TelegramCommands\NotFoundCommand;
+use Carbon\Carbon;
 use Slim\App;
 
 readonly class WebhookHandler
@@ -20,27 +22,60 @@ readonly class WebhookHandler
     {
         $this->update = Update::from($data);
         $_SESSION['chat_id'] = $this->update->message?->chat->id ?? $this->update->callbackQuery?->message->chat->id;
-        $_SESSION['language_code'] = $this->update->message?->from->languageCode ?? User::byChatId($_SESSION['chat_id'])->first()->language_code;
+        $_SESSION['locale'] = $this->update->message?->from->languageCode ?? User::byChatId(
+            $_SESSION['chat_id']
+        )->first()->language_code;
     }
 
-    public function handle(): void
+    /**
+     * @return void
+     */
+    public function handle(): bool
     {
         $text = $this->update->message?->text;
-        if (!empty($this->update->callbackQuery)) {
-            $data = $this->update->callbackQuery->data;
-        }
-        if (!empty($this->update->message->replyToMessage)) {
-            $steps = require(BASE_PATH . '/resources/steps.php');
-            $questionText = $this->update->message->replyToMessage->text;
-            foreach ($steps as $service => $questions) {
-                /** @var AbstractService $service */
-                if (!empty($step = $questions[$questionText])) {
-                    (new $service($this->app))->handle($step, $text, $this->update->message->chat->id);
+        return match (true) {
+            !empty($this->update->callbackQuery) => $this->handleCallback(),
+            !empty($this->update->message->replyToMessage) => $this->handleReply($text),
+            default => $this->handleDefaultCommands($text),
+        };
+    }
 
-                    return;
-                }
-            }
+    /**
+     * @param string $text
+     * @return bool
+     */
+    private function handleCallback(): bool
+    {
+        [$date, $action, $id] = explode('/', $this->update->callbackQuery->data);
+        $class = ActionStrategy::getServiceClass($action);
+        $taskService = new $class($this->app);
+        $taskService->run($date);
+
+        return true;
+    }
+
+    /**
+     * @param string $text
+     * @return bool
+     */
+    private function handleReply(string $answer): bool
+    {
+        [$validatorClass, $method] = (new ValidationMapper())->run($this->update->message->replyToMessage->text);
+        if (!empty($validatorClass) && !empty($method)) {
+            (new $validatorClass($this->app))->{$method}($answer);
+
+            return true;
         }
+
+        return false;
+    }
+
+    /**
+     * @param string $text
+     * @return bool
+     */
+    private function handleDefaultCommands(string $text): bool
+    {
         if (in_array($text, array_keys(AvailableCommand::all()))) {
             $class = AvailableCommand::all()[$text];
         } else {
@@ -49,5 +84,7 @@ readonly class WebhookHandler
         /** @var AbstractCommand $telegramCommand */
         $telegramCommand = new $class($this->app);
         $telegramCommand->execute($this->update);
+
+        return true;
     }
 }
